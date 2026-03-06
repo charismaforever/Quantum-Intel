@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum Threat Intelligence — PQC Defense Matrix</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020810;
+    --surface: #060f1e;
+    --panel: #0a1628;
+    --border: #0e2040;
+    --accent: #00d4ff;
+    --accent2: #7b2fff;
+    --accent3: #ff3860;
+    --warn: #ff9500;
+    --ok: #00e676;
+    --text: #c8e0ff;
+    --text-dim: #4a6fa5;
+    --text-bright: #ffffff;
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+    --glow2: 0 0 20px rgba(123,47,255,0.3);
+  }
+
+- { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+background: var(–bg);
+color: var(–text);
+font-family: ‘Rajdhani’, sans-serif;
+font-size: 15px;
+overflow-x: hidden;
+min-height: 100vh;
+}
+
+/* Animated grid background */
+body::before {
+content: ‘’;
+position: fixed;
+inset: 0;
+background-image:
+linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+background-size: 60px 60px;
+animation: gridScroll 20s linear infinite;
+pointer-events: none;
+z-index: 0;
+}
+
+@keyframes gridScroll {
+0% { transform: translate(0,0); }
+100% { transform: translate(60px, 60px); }
+}
+
+/* Particle canvas */
+#canvas {
+position: fixed;
+inset: 0;
+pointer-events: none;
+z-index: 0;
+opacity: 0.4;
+}
+
+.app {
+position: relative;
+z-index: 1;
+max-width: 1400px;
+margin: 0 auto;
+padding: 0 24px 60px;
+}
+
+/* ── HEADER ── */
+header {
+padding: 32px 0 24px;
+border-bottom: 1px solid var(–border);
+margin-bottom: 32px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 20px;
+flex-wrap: wrap;
+}
+
+.logo-block { display: flex; flex-direction: column; gap: 4px; }
+
+.logo {
+font-family: ‘Orbitron’, monospace;
+font-size: 22px;
+font-weight: 900;
+letter-spacing: 2px;
+color: var(–text-bright);
+text-transform: uppercase;
+}
+
+.logo span { color: var(–accent); }
+
+.subtitle {
+font-family: ‘Share Tech Mono’, monospace;
+font-size: 11px;
+color: var(–text-dim);
+letter-spacing: 3px;
+text-transform: uppercase;
+}
+
+.threat-level {
+display: flex;
+align-items: center;
+gap: 12px;
+font-family: ‘Share Tech Mono’, monospace;
+font-size: 12px;
+}
+
+.threat-badge {
+padding: 6px 16px;
+background: rgba(255,56,96,0.1);
+border: 1px solid var(–accent3);
+color: var(–accent3);
+letter-spacing: 2px;
+font-size: 11px;
+animation: pulse-badge 2s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+0%, 100% { box-shadow: 0 0 8px rgba(255,56,96,0.3); }
+50% { box-shadow: 0 0 20px rgba(255,56,96,0.7); }
+}
+
+/* ── NAV TABS ── */
+.tabs {
+display: flex;
+gap: 2px;
+margin-bottom: 28px;
+background: var(–surface);
+border: 1px solid var(–border);
+padding: 4px;
+width: fit-content;
+flex-wrap: wrap;
+}
+
+.tab {
+padding: 10px 22px;
+font-family: ‘Rajdhani’, sans-serif;
+font-weight: 600;
+font-size: 13px;
+letter-spacing: 1.5px;
+text-transform: uppercase;
+cursor: pointer;
+color: var(–text-dim);
+background: transparent;
+border: none;
+transition: all 0.2s;
+position: relative;
+}
+
+.tab:hover { color: var(–text); background: rgba(0,212,255,0.05); }
+
+.tab.active {
+color: var(–accent);
+background: rgba(0,212,255,0.08);
+box-shadow: inset 0 -2px 0 var(–accent);
+}
+
+/* ── PANELS ── */
+.panel { display: none; animation: fadeIn 0.3s ease; }
+.panel.active { display: block; }
+
+@keyframes fadeIn {
+from { opacity: 0; transform: translateY(8px); }
+to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── GRID LAYOUTS ── */
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
+.grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 20px; }
+
+/* ── CARD ── */
+.card {
+background: var(–panel);
+border: 1px solid var(–border);
+padding: 20px;
+position: relative;
+overflow: hidden;
+transition: border-color 0.3s;
+}
+
+.card::before {
+content: ‘’;
+position: absolute;
+top: 0; left: 0; right: 0;
+height: 2px;
+background: linear-gradient(90deg, transparent, var(–accent), transparent);
+opacity: 0;
+transition: opacity 0.3s;
+}
+
+.card:hover { border-color: rgba(0,212,255,0.3); }
+.card:hover::before { opacity: 1; }
+
+.card.accent2::before { background: linear-gradient(90deg, transparent, var(–accent2), transparent); }
+.card.danger::before { background: linear-gradient(90deg, transparent, var(–accent3), transparent); }
+.card.warn::before { background: linear-gradient(90deg, transparent, var(–warn), transparent); }
+.card.ok::before { background: linear-gradient(90deg, transparent, var(–ok), transparent); }
+
+.card-label {
+font-family: ‘Share Tech Mono’, monospace;
+font-size: 10px;
+letter-spacing: 3px;
+text-transform: uppercase;
+color: var(–text-dim);
+margin-bottom: 8px;
+}
+
+.card-title {
+font-family: ‘Orbitron’, monospace;
+font-size: 15px;
+font-weight: 700;
+color: var(–text-bright);
+margin-bottom: 12px;
+line-height: 1.3;
+}
+
+.card-value {
+font-family: ‘Orbitron’, monospace;
+font-size: 32px;
+font-weight: 900;
+line-height: 1;
+}
+
+.card-sub { font-size: 13px; color: var(–text-dim); margin-top: 4px; }
+
+/* ── STAT CARDS ── */
+.stat-cyan .card-value { color: var(–accent); text-shadow: 0 0 20px rgba(0,212,255,0.5); }
+.stat-red .card-value { color: var(–accent3); text-shadow: 0 0 20px rgba(255,56,96,0.5); }
+.stat-purple .card-value { color: var(–accent2); text-shadow: 0 0 20px rgba(123,47,255,0.5); }
+.stat-warn .card-value { color: var(–warn); text-shadow: 0 0 20px rgba(255,149,0,0.5); }
+
+/* ── SECTION TITLE ── */
+.section-title {
+font-family: ‘Orbitron’, monospace;
+font-size: 13px;
+font-weight: 700;
+letter-spacing: 3px;
+text-transform: uppercase;
+color: var(–text-dim);
+margin-bottom: 16px;
+display: flex;
+align-items: center;
+gap: 12px;
+}
+
+.section-title::after {
+content: ‘’;
+flex: 1;
+height: 1px;
+background: linear-gradient(90deg, var(–border), transparent);
+}
+
+/* ── THREAT TABLE ── */
+.threat-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+.threat-table th {
+font-family: ‘Share Tech Mono’, monospace;
+font-size: 10px;
+letter-spacing: 2px;
+text-transform: uppercase;
+color: var(–text-dim);
+padding: 10px 14px;
+text-align: left;
+border-bottom: 1px solid var(–border);
+background: var(–surface);
+}
+
+.threat-table td {
+padding: 12px 14px;
+border-bottom: 1px solid rgba(14,32,64,0.5);
+color: var(–text);
+vertical-align: middle;
+line-height: 1.4;
+}
+
+.threat-table tr:hover td { background: rgba(0,212,255,0.03); }
+
+/* ── RISK BADGES ── */
+.risk {
+display: inline-block;
+padding: 3px 10px;
+font-family: ‘Share Tech Mono’, monospace;
+font-size: 10px;
+letter-spacing: 1.5px;
+font-weight: 700;
+text-transform: uppercase;
+border: 1px solid;
+}
+
+.risk-critical { color: var(–accent3); border-color: var(–accent3); background: rgba(255,56,96,0.1); }
+.risk-high { color: var(–warn); border-color: var(–warn); background: rgba(255,149,0,0.1); }
+.risk-medium { color: #ffd600; border-color: #ffd600; background: rgba(255,214,0,0.1); }
+.risk-low { color: var(–ok); border-color: var(–ok); background: rgba(0,230,118,0.1); }
+.risk-safe { color: var(–accent); border-color: var(–accent); background: rgba(0,212,255,0.1); }
+
+/* ── ALGORITHM CARDS ── */
+.algo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+.algo-card {
+background: var(–panel);
+border: 1px solid var(–border);
+padding: 20px;
+position: relative;
+cursor: pointer;
+transition: all 0.3s;
+}
+
+.algo-card:hover {
+border-color: var(–accent);
+box-shadow: 0 0 30px rgba(0,212,255,0.1);
+transform: translateY(-2px);
+}
+
+.algo-card.selected {
+border-color: var(–accent);
+background: rgba(0,212,255,0.05);
+box-shadow: 0 0 30px rgba(0,212,255,0.15);
+}
+
+.algo-name {
+font-family: ‘Orbitron’, monospace;
+font-size: 14px;
+font-weight: 700;
+color: var(–accent);
+margin-bottom: 4px;
+}
+
+.algo-type {
+font-family: ‘Share Tech Mono’, monospace;
+font-size: 10px;
+letter-spacing: 2px;
+color: var(–text-dim);
+margin-bottom: 12px;
+text-transform: uppercase;
+}
+
+.algo-meta { display: flex; flex-direction: column; gap: 8px; }
+
+.algo-row {
+display: flex;
+justify-content: space-between;
+align-items: center;
+font-size: 12px;
+}
+
+.algo-key { color: var(–text-dim); }
+.algo-val { color: var(–text-bright); font-weight: 600; font-family: ‘Share Tech Mono’, monospace; font-size: 11px; }
+
+/* ── PROGRESS BARS ── */
+.bar-wrap { margin-bottom: 12px; }
+.bar-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+.bar-track { height: 6px; background: var(–border); position: relative; overflow: hidden; }
+.bar-fill { height: 100%; position: relative; transition: width 1s ease; }
+.bar-fill::after { content: ‘’; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3)); animation: shimmer 2s linear infinite; }
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+.bar-cyan .bar-fill { background: linear-gradient(90deg, rgba(0,212,255,0.5), var(–accent)); }
+.bar-red .bar-fill { background: linear-gradient(90deg, rgba(255,56,96,0.5), var(–accent3)); }
+.bar-purple .bar-fill { background: linear-gradient(90deg, rgba(123,47,255,0.5), var(–accent2)); }
+.bar-green .bar-fill { background: linear-gradient(90deg, rgba(0,230,118,0.5), var(–ok)); }
+
+/* ── TIMELINE ── */
+.timeline { position: relative; padding-left: 32px; }
+.timeline::before { content: ‘’; position: absolute; left: 8px; top: 0; bottom: 0; width: 1px; background: linear-gradient(180deg, var(–accent), var(–accent2), transparent); }
+
+.timeline-item { position: relative; margin-bottom: 24px; }
+
+.timeline-dot {
+position: absolute;
+left: -28px;
+top: 4px;
+width: 12px;
+height: 12px;
+border: 2px solid var(–accent);
+background: var(–bg);
+transform: rotate(45deg);
+}
+
+.timeline-dot.done { background: var(–accent); }
+.timeline-dot.active { background: var(–warn); border-color: var(–warn); animation: pulse-dot 1.5s ease-in-out infinite; }
+@keyframes pulse-dot { 0%,100% { box-shadow: 0 0 0 0 rgba(255,149,0,0.4); } 50% { box-shadow: 0 0 0 8px rgba(255,149,0,0); } }
+
+.timeline-year {
+font-family: ‘Orbitron’, monospace;
+font-size: 11px;
+color: var(–accent);
+letter-spacing: 2px;
+margin-bottom: 4px;
+}
+
+.timeline-title { font-weight: 600; color: var(–text-bright); margin-bottom: 4px; font-size: 14px; }
+.timeline-desc { font-size: 12px; color: var(–text-dim); line-height: 1.5; }
+
+/* ── RADAR CHART ── */
+.radar-wrap {
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 40px;
+flex-wrap: wrap;
+padding: 10px 0;
+}
+
+svg text { font-family: ‘Share Tech Mono’, monospace; }
+
+/* ── MITIGATION FLOW ── */
+.flow-wrap { position: relative; overflow: hidden; }
+.flow-nodes { display: flex; flex-direction: column; gap: 12px; }
+.flow-node {
+display: flex;
+align-items: flex-start;
+gap: 16px;
+padding: 16px;
+background: var(–surface);
+border: 1px solid var(–border);
+position: relative;
+transition: all 0.3s;
+}
+.flow-node:hover { border-color: rgba(0,212,255,0.3); }
+.flow-num {
+font-family: ‘Orbitron’, monospace;
+font-size: 20px;
+font-weight: 900;
+color: var(–accent);
+opacity: 0.3;
+min-width: 36px;
+line-height: 1;
+}
+.flow-content { flex: 1; }
+.flow-title { font-weight: 700; color: var(–text-bright); margin-bottom: 6px; font-size: 14px; }
+.flow-desc { font-size: 12px; color: var(–text-dim); line-height: 1.6; }
+.flow-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.flow-tag {
+font-family: ‘Share Tech Mono’, monospace;
+font-size: 9px;
+letter-spacing: 1px;
+padding: 2px 8px;
+background: rgba(0,212,255,0.08);
+border: 1px solid rgba(0,212,255,0.2);
+color: var(–accent);
+text-transform: uppercase;
+}
+.flow-tag.purple { background: rgba(123,47,255,0.08); border-color: rgba(123,47,255,0.2); color: var(–accent2); }
+.flow-tag.red { background: rgba(255,56,96,0.08); border-color: rgba(255,56,96,0.2); color: var(–accent3); }
+
+/* ── COMPARISON TABLE ── */
+.compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.compare-table th {
+font-family: ‘Share Tech Mono’, monospace;
+font-size: 10px;
+letter-spacing: 2px;
+text-transform: uppercase;
+padding: 10px 14px;
+text-align: center;
+border: 1px solid var(–border);
+background: var(–surface);
+color: var(–text-dim);
+}
+.compare-table th:first-child { text-align: left; }
+.compare-table td {
+padding: 11px 14px;
+border: 1px solid rgba(14,32,64,0.5);
+text-align: center;
+vertical-align: middle;
+}
+.compare-table td:first-child { text-align: left; color: var(–text); font-weight: 600; }
+.compare-table tr:hover td { background: rgba(0,212,255,0.03); }
+
+.check { color: var(–ok); font-size: 16px; }
+.cross { color: var(–accent3); font-size: 16px; }
+.partial { color: var(–warn); font-size: 14px; }
+
+/* ── TOOLTIP ── */
+[data-tip] { position: relative; cursor: help; }
+[data-tip]:hover::after {
+content: attr(data-tip);
+position: absolute;
+bottom: 130%;
+left: 50%;
+transform: translateX(-50%);
+background: var(–panel);
+border: 1px solid var(–accent);
+color: var(–text);
+padding: 6px 12px;
+font-size: 11px;
+white-space: nowrap;
+z-index: 100;
+font-family: ‘Share Tech Mono’, monospace;
+box-shadow: var(–glow);
+pointer-events: none;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(–bg); }
+::-webkit-scrollbar-thumb { background: var(–border); }
+::-webkit-scrollbar-thumb:hover { background: var(–text-dim); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+.grid-3 { grid-template-columns: 1fr 1fr; }
+.grid-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+.grid-3 { grid-template-columns: 1fr; }
+.tabs { width: 100%; }
+.tab { flex: 1; text-align: center; padding: 10px 8px; font-size: 11px; }
+}
+</style>
+
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="app">
+  <header>
+    <div class="logo-block">
+      <div class="logo">QUANTUM<span>SEC</span> // DEFENSE MATRIX</div>
+      <div class="subtitle">Post-Quantum Cryptography Intelligence Platform · v2.1</div>
+    </div>
+    <div class="threat-level">
+      <span style="color:var(--text-dim);font-size:11px;">GLOBAL QUANTUM THREAT</span>
+      <div class="threat-badge">ESCALATING</div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview')">Overview</button>
+    <button class="tab" onclick="switchTab('threats')">Threat Landscape</button>
+    <button class="tab" onclick="switchTab('algorithms')">PQC Algorithms</button>
+    <button class="tab" onclick="switchTab('mitigation')">Mitigation Strategy</button>
+    <button class="tab" onclick="switchTab('roadmap')">Migration Roadmap</button>
+    <button class="tab" onclick="switchTab('compare')">Technique Comparison</button>
+  </div>
+
+  <!-- ══════════════ OVERVIEW ══════════════ -->
+
+  <div id="panel-overview" class="panel active">
+    <div class="grid-3">
+      <div class="card stat-red">
+        <div class="card-label">Estimated Timeline</div>
+        <div class="card-value">~7 YRS</div>
+        <div class="card-sub">Until cryptographically relevant quantum computer</div>
+      </div>
+      <div class="card stat-warn">
+        <div class="card-label">Vulnerable Algorithms</div>
+        <div class="card-value">94%</div>
+        <div class="card-sub">Of current PKI infrastructure at risk</div>
+      </div>
+      <div class="card stat-cyan">
+        <div class="card-label">NIST PQC Standards</div>
+        <div class="card-value">4</div>
+        <div class="card-sub">Finalized Aug 2024 — migration begins now</div>
+      </div>
+    </div>
+
+```
+<div class="grid-2">
+  <div class="card">
+    <div class="section-title">Threat Exposure by Domain</div>
+    <div class="bar-wrap">
+      <div class="bar-label"><span>RSA / ECC Public Key Crypto</span><span style="color:var(--accent3)">CRITICAL</span></div>
+      <div class="bar-track bar-red"><div class="bar-fill" style="width:97%"></div></div>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar-label"><span>Symmetric Encryption (AES-128)</span><span style="color:var(--warn)">HIGH</span></div>
+      <div class="bar-track bar-red"><div class="bar-fill" style="width:70%"></div></div>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar-label"><span>Hash Functions (SHA-256)</span><span style="color:#ffd600)">MEDIUM</span></div>
+      <div class="bar-track bar-purple"><div class="bar-fill" style="width:45%"></div></div>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar-label"><span>Symmetric Encryption (AES-256)</span><span style="color:var(--ok)">LOW</span></div>
+      <div class="bar-track bar-green"><div class="bar-fill" style="width:20%"></div></div>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar-label"><span>NIST PQC Finalized Algorithms</span><span style="color:var(--accent)">SAFE</span></div>
+      <div class="bar-track bar-cyan"><div class="bar-fill" style="width:5%"></div></div>
+    </div>
+  </div>
+
+  <div class="card accent2">
+    <div class="section-title">Quantum Readiness Score</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap;padding:10px 0">
+      <svg width="160" height="160" viewBox="0 0 160 160">
+        <defs>
+          <linearGradient id="arc-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#ff3860"/>
+            <stop offset="50%" stop-color="#ff9500"/>
+            <stop offset="100%" stop-color="#7b2fff"/>
+          </linearGradient>
+        </defs>
+        <circle cx="80" cy="80" r="64" fill="none" stroke="#0e2040" stroke-width="14"/>
+        <circle cx="80" cy="80" r="64" fill="none" stroke="url(#arc-grad)" stroke-width="14"
+          stroke-dasharray="402" stroke-dashoffset="281" stroke-linecap="round"
+          transform="rotate(-90 80 80)" style="transition:stroke-dashoffset 1.5s ease"/>
+        <text x="80" y="72" text-anchor="middle" fill="#ffffff" font-size="28" font-weight="900" font-family="Orbitron,monospace">30%</text>
+        <text x="80" y="92" text-anchor="middle" fill="#4a6fa5" font-size="10" font-family="Share Tech Mono,monospace">READINESS</text>
+        <text x="80" y="108" text-anchor="middle" fill="#ff9500" font-size="9" font-family="Share Tech Mono,monospace">ENTERPRISE AVG</text>
+      </svg>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:12px;color:var(--text-dim)">Crypto Inventory Complete</div>
+        <div style="font-size:12px;color:var(--text-dim)">PQC Policy Defined</div>
+        <div style="font-size:12px;color:var(--text-dim)">NIST Standards Adopted</div>
+        <div style="font-size:12px;color:var(--text-dim)">Hybrid Mode Deployed</div>
+        <div style="font-size:12px;color:var(--text-dim)">Staff Trained</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="color:var(--warn)">⚠ Partial</div>
+        <div style="color:var(--accent3)">✗ Missing</div>
+        <div style="color:var(--accent3)">✗ Missing</div>
+        <div style="color:var(--accent3)">✗ Missing</div>
+        <div style="color:var(--accent3)">✗ Missing</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">Key Quantum Attack Vectors at a Glance</div>
+  <div class="grid-3" style="margin:0">
+    <div style="padding:16px;border:1px solid var(--border);background:var(--surface)">
+      <div style="font-family:'Orbitron',monospace;font-size:12px;color:var(--accent3);margin-bottom:8px">SHOR'S ALGORITHM</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.6">Breaks RSA, DSA, ECDSA, and DH in polynomial time. Threatens all public-key infrastructure protecting TLS, SSH, VPNs, and digital signatures today.</div>
+    </div>
+    <div style="padding:16px;border:1px solid var(--border);background:var(--surface)">
+      <div style="font-family:'Orbitron',monospace;font-size:12px;color:var(--warn);margin-bottom:8px">GROVER'S ALGORITHM</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.6">Provides quadratic speedup for brute-force search. Effectively halves symmetric key security — AES-128 becomes AES-64 equivalent. AES-256 remains viable.</div>
+    </div>
+    <div style="padding:16px;border:1px solid var(--border);background:var(--surface)">
+      <div style="font-family:'Orbitron',monospace;font-size:12px;color:var(--accent2);margin-bottom:8px">HARVEST NOW / DECRYPT LATER</div>
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.6">Adversaries are capturing encrypted traffic today to decrypt once quantum computers mature. Long-lived sensitive data is already compromised in transit.</div>
+    </div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- ══════════════ THREATS ══════════════ -->
+
+  <div id="panel-threats" class="panel">
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title">Quantum Threat Landscape — Cryptographic Vulnerabilities</div>
+      <table class="threat-table">
+        <thead>
+          <tr>
+            <th>Algorithm / Protocol</th>
+            <th>Type</th>
+            <th>Quantum Attack</th>
+            <th>Risk Level</th>
+            <th>Time to Compromise</th>
+            <th>Recommended Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--text-bright)">RSA-2048</strong></td>
+            <td>Asymmetric</td>
+            <td>Shor's Algorithm</td>
+            <td><span class="risk risk-critical">CRITICAL</span></td>
+            <td data-tip="With 4000+ logical qubits">Hours post-CRQC</td>
+            <td style="color:var(--accent3)">Replace immediately</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">ECDSA / ECDH</strong></td>
+            <td>Asymmetric</td>
+            <td>Shor's Algorithm</td>
+            <td><span class="risk risk-critical">CRITICAL</span></td>
+            <td>Hours post-CRQC</td>
+            <td style="color:var(--accent3)">Replace immediately</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">Diffie-Hellman</strong></td>
+            <td>Key Exchange</td>
+            <td>Shor's Algorithm</td>
+            <td><span class="risk risk-critical">CRITICAL</span></td>
+            <td>Hours post-CRQC</td>
+            <td style="color:var(--accent3)">Replace immediately</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">DSA</strong></td>
+            <td>Signature</td>
+            <td>Shor's Algorithm</td>
+            <td><span class="risk risk-critical">CRITICAL</span></td>
+            <td>Hours post-CRQC</td>
+            <td style="color:var(--accent3)">Replace immediately</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">AES-128</strong></td>
+            <td>Symmetric</td>
+            <td>Grover's Algorithm</td>
+            <td><span class="risk risk-high">HIGH</span></td>
+            <td>Days–weeks post-CRQC</td>
+            <td style="color:var(--warn)">Upgrade to AES-256</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">SHA-256</strong></td>
+            <td>Hash</td>
+            <td>Grover's Algorithm</td>
+            <td><span class="risk risk-medium">MEDIUM</span></td>
+            <td>Months post-CRQC</td>
+            <td style="color:#ffd600">Upgrade to SHA-3/512</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">TLS 1.2</strong></td>
+            <td>Protocol</td>
+            <td>Shor's (key exchange)</td>
+            <td><span class="risk risk-high">HIGH</span></td>
+            <td>Immediate</td>
+            <td style="color:var(--warn)">Migrate to TLS 1.3 + PQC</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">TLS 1.3</strong></td>
+            <td>Protocol</td>
+            <td>Shor's (key exchange)</td>
+            <td><span class="risk risk-medium">MEDIUM</span></td>
+            <td>Post-CRQC</td>
+            <td style="color:#ffd600">Add hybrid PQC KEM</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">SSH (RSA/ECDSA)</strong></td>
+            <td>Protocol</td>
+            <td>Shor's Algorithm</td>
+            <td><span class="risk risk-high">HIGH</span></td>
+            <td>Hours post-CRQC</td>
+            <td style="color:var(--warn)">Replace host keys with PQC</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">AES-256</strong></td>
+            <td>Symmetric</td>
+            <td>Grover's (limited)</td>
+            <td><span class="risk risk-low">LOW</span></td>
+            <td>Computationally infeasible</td>
+            <td style="color:var(--ok)">Continue using</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">CRYSTALS-Kyber</strong></td>
+            <td>PQC KEM</td>
+            <td>No known quantum attack</td>
+            <td><span class="risk risk-safe">SAFE</span></td>
+            <td>N/A (NIST Standard)</td>
+            <td style="color:var(--accent)">✓ Deploy now</td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-bright)">CRYSTALS-Dilithium</strong></td>
+            <td>PQC Signature</td>
+            <td>No known quantum attack</td>
+            <td><span class="risk risk-safe">SAFE</span></td>
+            <td>N/A (NIST Standard)</td>
+            <td style="color:var(--accent)">✓ Deploy now</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+```
+<div class="grid-2">
+  <div class="card warn">
+    <div class="section-title">Harvest Now / Decrypt Later Risk</div>
+    <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-bottom:16px">
+      Nation-state adversaries are actively collecting encrypted data today with the intent to decrypt it once cryptographically relevant quantum computers (CRQCs) exist. This threat is <strong style="color:var(--warn)">present and active right now</strong> — before any quantum computer exists.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <span style="color:var(--accent3);font-size:16px;line-height:1">⚠</span>
+        <span style="font-size:12px;color:var(--text-dim)">Government / defense secrets with 25+ year sensitivity</span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <span style="color:var(--accent3);font-size:16px;line-height:1">⚠</span>
+        <span style="font-size:12px;color:var(--text-dim)">Healthcare records and financial data with long retention</span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <span style="color:var(--warn);font-size:16px;line-height:1">⚠</span>
+        <span style="font-size:12px;color:var(--text-dim)">Intellectual property and trade secrets</span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <span style="color:var(--warn);font-size:16px;line-height:1">⚠</span>
+        <span style="font-size:12px;color:var(--text-dim)">Long-term contractual and legal communications</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Attack Complexity vs. Impact</div>
+    <svg width="100%" height="220" viewBox="0 0 400 220">
+      <line x1="40" y1="180" x2="380" y2="180" stroke="#0e2040" stroke-width="1"/>
+      <line x1="40" y1="180" x2="40" y2="20" stroke="#0e2040" stroke-width="1"/>
+      <text x="210" y="210" text-anchor="middle" fill="#4a6fa5" font-size="10">ATTACK COMPLEXITY →</text>
+      <text x="14" y="100" fill="#4a6fa5" font-size="10" transform="rotate(-90,14,100)">IMPACT →</text>
+      <!-- Shor -->
+      <circle cx="320" cy="40" r="20" fill="rgba(255,56,96,0.2)" stroke="#ff3860" stroke-width="1.5"/>
+      <text x="320" y="37" text-anchor="middle" fill="#ff3860" font-size="8">SHOR'S</text>
+      <text x="320" y="48" text-anchor="middle" fill="#ff3860" font-size="8">ALGO</text>
+      <!-- Grover -->
+      <circle cx="240" cy="100" r="16" fill="rgba(255,149,0,0.2)" stroke="#ff9500" stroke-width="1.5"/>
+      <text x="240" y="97" text-anchor="middle" fill="#ff9500" font-size="8">GROVER</text>
+      <text x="240" y="108" text-anchor="middle" fill="#ff9500" font-size="8">'S ALGO</text>
+      <!-- HNDL -->
+      <circle cx="80" cy="60" r="22" fill="rgba(123,47,255,0.2)" stroke="#7b2fff" stroke-width="1.5"/>
+      <text x="80" y="55" text-anchor="middle" fill="#7b2fff" font-size="8">HNDL</text>
+      <text x="80" y="66" text-anchor="middle" fill="#7b2fff" font-size="7">ACTIVE NOW</text>
+      <!-- QKD intercept -->
+      <circle cx="160" cy="150" r="12" fill="rgba(0,212,255,0.1)" stroke="#00d4ff" stroke-width="1.5"/>
+      <text x="160" y="153" text-anchor="middle" fill="#00d4ff" font-size="7">QKD RISK</text>
+    </svg>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- ══════════════ ALGORITHMS ══════════════ -->
+
+  <div id="panel-algorithms" class="panel">
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title">NIST Post-Quantum Cryptography Standards — Finalized August 2024</div>
+      <div class="algo-grid">
+        <div class="algo-card selected" onclick="selectAlgo(this)">
+          <div class="algo-name">CRYSTALS-Kyber</div>
+          <div class="algo-type">FIPS 203 · Key Encapsulation Mechanism</div>
+          <div class="algo-meta">
+            <div class="algo-row"><span class="algo-key">Hard Problem</span><span class="algo-val">Module-LWE</span></div>
+            <div class="algo-row"><span class="algo-key">Key Size (pk)</span><span class="algo-val">800–1568 bytes</span></div>
+            <div class="algo-row"><span class="algo-key">Security Level</span><span class="algo-val">128 / 192 / 256-bit</span></div>
+            <div class="algo-row"><span class="algo-key">Performance</span><span class="algo-val">⚡ Very Fast</span></div>
+            <div class="algo-row"><span class="algo-key">Status</span><span class="algo-val" style="color:var(--ok)">✓ NIST STANDARD</span></div>
+            <div class="algo-row"><span class="algo-key">Use Case</span><span class="algo-val">TLS, VPN, Email</span></div>
+          </div>
+        </div>
+
+```
+    <div class="algo-card" onclick="selectAlgo(this)">
+      <div class="algo-name">CRYSTALS-Dilithium</div>
+      <div class="algo-type">FIPS 204 · Digital Signature</div>
+      <div class="algo-meta">
+        <div class="algo-row"><span class="algo-key">Hard Problem</span><span class="algo-val">Module-LWE / SIS</span></div>
+        <div class="algo-row"><span class="algo-key">Sig Size</span><span class="algo-val">2420–4595 bytes</span></div>
+        <div class="algo-row"><span class="algo-key">Security Level</span><span class="algo-val">128 / 192 / 256-bit</span></div>
+        <div class="algo-row"><span class="algo-key">Performance</span><span class="algo-val">⚡ Fast</span></div>
+        <div class="algo-row"><span class="algo-key">Status</span><span class="algo-val" style="color:var(--ok)">✓ NIST STANDARD</span></div>
+        <div class="algo-row"><span class="algo-key">Use Case</span><span class="algo-val">PKI, Code Signing</span></div>
+      </div>
+    </div>
+
+    <div class="algo-card" onclick="selectAlgo(this)">
+      <div class="algo-name">FALCON</div>
+      <div class="algo-type">FIPS 206 · Digital Signature</div>
+      <div class="algo-meta">
+        <div class="algo-row"><span class="algo-key">Hard Problem</span><span class="algo-val">NTRU Lattice</span></div>
+        <div class="algo-row"><span class="algo-key">Sig Size</span><span class="algo-val">666–1280 bytes</span></div>
+        <div class="algo-row"><span class="algo-key">Security Level</span><span class="algo-val">128 / 256-bit</span></div>
+        <div class="algo-row"><span class="algo-key">Performance</span><span class="algo-val">✓ Compact sigs</span></div>
+        <div class="algo-row"><span class="algo-key">Status</span><span class="algo-val" style="color:var(--ok)">✓ NIST STANDARD</span></div>
+        <div class="algo-row"><span class="algo-key">Use Case</span><span class="algo-val">IoT, Bandwidth-limited</span></div>
+      </div>
+    </div>
+
+    <div class="algo-card" onclick="selectAlgo(this)">
+      <div class="algo-name">SPHINCS+</div>
+      <div class="algo-type">FIPS 205 · Digital Signature</div>
+      <div class="algo-meta">
+        <div class="algo-row"><span class="algo-key">Hard Problem</span><span class="algo-val">Hash Functions</span></div>
+        <div class="algo-row"><span class="algo-key">Sig Size</span><span class="algo-val">7.8–49.9 KB</span></div>
+        <div class="algo-row"><span class="algo-key">Security Level</span><span class="algo-val">128 / 192 / 256-bit</span></div>
+        <div class="algo-row"><span class="algo-key">Performance</span><span class="algo-val">⚠ Slower, large</span></div>
+        <div class="algo-row"><span class="algo-key">Status</span><span class="algo-val" style="color:var(--ok)">✓ NIST STANDARD</span></div>
+        <div class="algo-row"><span class="algo-key">Use Case</span><span class="algo-val">Root CAs, Long-term</span></div>
+      </div>
+    </div>
+
+    <div class="algo-card" onclick="selectAlgo(this)" style="border-color:rgba(255,149,0,0.3)">
+      <div class="algo-name" style="color:var(--warn)">McEliece / BIKE</div>
+      <div class="algo-type">Code-Based · Under Evaluation</div>
+      <div class="algo-meta">
+        <div class="algo-row"><span class="algo-key">Hard Problem</span><span class="algo-val">Decoding Random Codes</span></div>
+        <div class="algo-row"><span class="algo-key">Key Size (pk)</span><span class="algo-val">~1 MB (McEliece)</span></div>
+        <div class="algo-row"><span class="algo-key">Security Level</span><span class="algo-val">128-bit+</span></div>
+        <div class="algo-row"><span class="algo-key">Performance</span><span class="algo-val">⚠ Very large keys</span></div>
+        <div class="algo-row"><span class="algo-key">Status</span><span class="algo-val" style="color:var(--warn)">Round 4 Evaluation</span></div>
+        <div class="algo-row"><span class="algo-key">Use Case</span><span class="algo-val">Backup KEM option</span></div>
+      </div>
+    </div>
+
+    <div class="algo-card" onclick="selectAlgo(this)" style="border-color:rgba(123,47,255,0.3)">
+      <div class="algo-name" style="color:var(--accent2)">QKD (Quantum Key Dist.)</div>
+      <div class="algo-type">Quantum Physics · Complementary</div>
+      <div class="algo-meta">
+        <div class="algo-row"><span class="algo-key">Basis</span><span class="algo-val">Quantum Mechanics</span></div>
+        <div class="algo-row"><span class="algo-key">Range</span><span class="algo-val">~100km fiber</span></div>
+        <div class="algo-row"><span class="algo-key">Security</span><span class="algo-val">Information-Theoretic</span></div>
+        <div class="algo-row"><span class="algo-key">Cost</span><span class="algo-val">⚠ Very High</span></div>
+        <div class="algo-row"><span class="algo-key">Status</span><span class="algo-val" style="color:var(--accent2)">Commercial Deployments</span></div>
+        <div class="algo-row"><span class="algo-key">Use Case</span><span class="algo-val">Govt / Military / Finance</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">Security Level Comparison — Classical vs Quantum</div>
+  <div class="grid-2" style="margin:0">
+    <div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;font-family:'Share Tech Mono',monospace">CLASSICAL SECURITY EQUIVALENCE</div>
+      <div class="bar-wrap"><div class="bar-label"><span>RSA-2048</span><span style="color:var(--accent3)">0-bit quantum</span></div><div class="bar-track bar-red"><div class="bar-fill" style="width:0%"></div></div></div>
+      <div class="bar-wrap"><div class="bar-label"><span>AES-128</span><span style="color:var(--warn)">64-bit quantum</span></div><div class="bar-track bar-red"><div class="bar-fill" style="width:25%"></div></div></div>
+      <div class="bar-wrap"><div class="bar-label"><span>AES-256</span><span style="color:var(--ok)">128-bit quantum</span></div><div class="bar-track bar-green"><div class="bar-fill" style="width:50%"></div></div></div>
+      <div class="bar-wrap"><div class="bar-label"><span>SHA-256</span><span style="color:var(--warn)">128-bit quantum</span></div><div class="bar-track bar-green"><div class="bar-fill" style="width:50%"></div></div></div>
+      <div class="bar-wrap"><div class="bar-label"><span>SHA-512</span><span style="color:var(--ok)">256-bit quantum</span></div><div class="bar-track bar-green"><div class="bar-fill" style="width:100%"></div></div></div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;font-family:'Share Tech Mono',monospace">PQC QUANTUM SECURITY LEVELS</div>
+      <div class="bar-wrap"><div class="bar-label"><span>Kyber-512</span><span style="color:var(--accent)">Level I — 128-bit</span></div><div class="bar-track bar-cyan"><div class="bar-fill" style="width:50%"></div></div></div>
+      <div class="bar-wrap"><div class="bar-label"><span>Kyber-768</span><span style="color:var(--accent)">Level III — 192-bit</span></div><div class="bar-track bar-cyan"><div class="bar-fill" style="width:75%"></div></div></div>
+      <div class="bar-wrap"><div class="bar-label"><span>Kyber-1024</span><span style="color:var(--accent)">Level V — 256-bit</span></div><div class="bar-track bar-cyan"><div class="bar-fill" style="width:100%"></div></div></div>
+      <div class="bar-wrap"><div class="bar-label"><span>Dilithium3</span><span style="color:var(--accent)">Level III — 192-bit</span></div><div class="bar-track bar-cyan"><div class="bar-fill" style="width:75%"></div></div></div>
+      <div class="bar-wrap"><div class="bar-label"><span>SPHINCS+-256</span><span style="color:var(--accent)">Level V — 256-bit</span></div><div class="bar-track bar-cyan"><div class="bar-fill" style="width:100%"></div></div></div>
+    </div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- ══════════════ MITIGATION ══════════════ -->
+
+  <div id="panel-mitigation" class="panel">
+    <div class="grid-2" style="align-items:start">
+      <div>
+        <div class="section-title">Mitigation Strategy Framework</div>
+        <div class="flow-nodes">
+          <div class="flow-node">
+            <div class="flow-num">01</div>
+            <div class="flow-content">
+              <div class="flow-title">Cryptographic Inventory & Discovery</div>
+              <div class="flow-desc">Enumerate all cryptographic assets: certificates, keys, algorithms in use across applications, APIs, hardware, and third-party dependencies. You cannot protect what you cannot see.</div>
+              <div class="flow-tags">
+                <span class="flow-tag">Immediate</span>
+                <span class="flow-tag">Foundation</span>
+              </div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-num">02</div>
+            <div class="flow-content">
+              <div class="flow-title">Crypto-Agility Architecture</div>
+              <div class="flow-desc">Design systems so cryptographic algorithms can be swapped without rewriting applications. Abstract crypto behind interfaces. This is your long-term insurance policy.</div>
+              <div class="flow-tags">
+                <span class="flow-tag purple">Architecture</span>
+                <span class="flow-tag purple">Design</span>
+              </div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-num">03</div>
+            <div class="flow-content">
+              <div class="flow-title">Hybrid Classical + PQC Deployment</div>
+              <div class="flow-desc">Deploy hybrid modes that combine classical algorithms (RSA/ECC) with PQC algorithms simultaneously. Security is maintained if either system remains secure. Deploy in TLS, VPN, SSH now.</div>
+              <div class="flow-tags">
+                <span class="flow-tag">Deploy Now</span>
+                <span class="flow-tag purple">Hybrid Mode</span>
+              </div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-num">04</div>
+            <div class="flow-content">
+              <div class="flow-title">Prioritize HNDL-Sensitive Data</div>
+              <div class="flow-desc">Immediately re-encrypt long-lived, high-sensitivity data with AES-256 + Kyber KEM. Classify data by sensitivity lifetime. Anything sensitive for 10+ years needs PQC protection today.</div>
+              <div class="flow-tags">
+                <span class="flow-tag red">Critical</span>
+                <span class="flow-tag red">Data Security</span>
+              </div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-num">05</div>
+            <div class="flow-content">
+              <div class="flow-title">PKI Modernization</div>
+              <div class="flow-desc">Plan and execute migration of certificate authority infrastructure to support PQC signatures (Dilithium / FALCON). Issue hybrid certificates. Update revocation and validation infrastructure.</div>
+              <div class="flow-tags">
+                <span class="flow-tag purple">PKI</span>
+                <span class="flow-tag">Certificates</span>
+              </div>
+            </div>
+          </div>
+          <div class="flow-node">
+            <div class="flow-num">06</div>
+            <div class="flow-content">
+              <div class="flow-title">Supply Chain & Third-Party Assessment</div>
+              <div class="flow-desc">Audit vendors, cloud providers, and software dependencies for quantum readiness. Include PQC requirements in procurement. Most breaches will come through the supply chain.</div>
+              <div class="flow-tags">
+                <span class="flow-tag red">Supply Chain</span>
+                <span class="flow-tag">Governance</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+```
+  <div>
+    <div class="section-title">Defense Layers — Quantum Security Stack</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="padding:14px 18px;background:rgba(255,56,96,0.08);border:1px solid rgba(255,56,96,0.3);border-left:4px solid var(--accent3)">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--accent3);margin-bottom:6px">LAYER 5 — APPLICATION</div>
+        <div style="font-size:12px;color:var(--text-dim)">Re-key with Kyber · Sign with Dilithium · Update JWT/token libraries · Migrate code-signing pipelines</div>
+      </div>
+      <div style="padding:14px 18px;background:rgba(255,149,0,0.08);border:1px solid rgba(255,149,0,0.3);border-left:4px solid var(--warn)">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--warn);margin-bottom:6px">LAYER 4 — PROTOCOL</div>
+        <div style="font-size:12px;color:var(--text-dim)">TLS 1.3 + Kyber hybrid · Post-quantum SSH · PQC-enabled VPN tunnels · DNSSEC with PQC</div>
+      </div>
+      <div style="padding:14px 18px;background:rgba(123,47,255,0.08);border:1px solid rgba(123,47,255,0.3);border-left:4px solid var(--accent2)">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--accent2);margin-bottom:6px">LAYER 3 — CRYPTOGRAPHIC</div>
+        <div style="font-size:12px;color:var(--text-dim)">CRYSTALS-Kyber (KEM) · CRYSTALS-Dilithium (sig) · FALCON (compact sig) · SPHINCS+ (stateless hash)</div>
+      </div>
+      <div style="padding:14px 18px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.3);border-left:4px solid var(--accent)">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--accent);margin-bottom:6px">LAYER 2 — ARCHITECTURE</div>
+        <div style="font-size:12px;color:var(--text-dim)">Crypto-agility design · Algorithm abstraction layers · HSM with PQC support · Key management systems</div>
+      </div>
+      <div style="padding:14px 18px;background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.3);border-left:4px solid var(--ok)">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--ok);margin-bottom:6px">LAYER 1 — GOVERNANCE</div>
+        <div style="font-size:12px;color:var(--text-dim)">Crypto inventory · Risk classification · Vendor assessment · NIST compliance · Staff training</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="section-title">Quick Win Actions — Deploy This Week</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px;align-items:center;padding:10px;background:var(--surface);border:1px solid var(--border)">
+          <span style="color:var(--ok);font-size:18px">✓</span>
+          <span style="font-size:13px">Enable TLS 1.3 on all public endpoints (disable TLS 1.0/1.1)</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;padding:10px;background:var(--surface);border:1px solid var(--border)">
+          <span style="color:var(--ok);font-size:18px">✓</span>
+          <span style="font-size:13px">Migrate AES-128 data stores to AES-256</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;padding:10px;background:var(--surface);border:1px solid var(--border)">
+          <span style="color:var(--ok);font-size:18px">✓</span>
+          <span style="font-size:13px">Upgrade SHA-256 hashes to SHA-3 / SHA-512 for long-lived data</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;padding:10px;background:var(--surface);border:1px solid var(--border)">
+          <span style="color:var(--ok);font-size:18px">✓</span>
+          <span style="font-size:13px">Run liboqs or Open Quantum Safe in test environment</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;padding:10px;background:var(--surface);border:1px solid var(--border)">
+          <span style="color:var(--ok);font-size:18px">✓</span>
+          <span style="font-size:13px">Start cryptographic asset inventory using tooling (e.g. PQC Migrator, Crypto4A)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- ══════════════ ROADMAP ══════════════ -->
+
+  <div id="panel-roadmap" class="panel">
+    <div class="grid-2" style="align-items:start">
+      <div class="card">
+        <div class="section-title">Migration Roadmap — 2024–2030</div>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-dot done"></div>
+            <div class="timeline-year">2024</div>
+            <div class="timeline-title">NIST PQC Standards Finalized</div>
+            <div class="timeline-desc">FIPS 203 (Kyber), 204 (Dilithium), 205 (SPHINCS+), 206 (FALCON) published. Migration window officially opens. NSA/CISA guidance released.</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot active"></div>
+            <div class="timeline-year">2025 — NOW</div>
+            <div class="timeline-title">Inventory, Planning & Hybrid Pilots</div>
+            <div class="timeline-desc">Complete crypto asset inventory. Define migration priorities. Deploy hybrid TLS (classical + Kyber) in non-critical systems. Train security teams on PQC. Begin vendor assessments.</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-year">2026–2027</div>
+            <div class="timeline-title">Production Hybrid Deployment</div>
+            <div class="timeline-desc">Full hybrid PQC/classical deployment in TLS, VPN, SSH across production. PQC-signed certificates issued. PKI infrastructure updated. Critical data re-encrypted with Kyber KEMs.</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-year">2028–2029</div>
+            <div class="timeline-title">Classical Algorithm Phase-Out Begins</div>
+            <div class="timeline-desc">NIST / NSA plan to deprecate RSA and ECC. Begin removing classical-only fallbacks. Full PQC-native deployment in all new systems. Legacy system migration completion.</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-year">2030+</div>
+            <div class="timeline-title">Post-Quantum Native Infrastructure</div>
+            <div class="timeline-desc">Full PQC-native operation. Classical algorithms fully retired from sensitive systems. Continuous monitoring for new quantum computing advances and algorithm updates.</div>
+          </div>
+        </div>
+      </div>
+
+```
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div class="card danger">
+      <div class="section-title">Migration Priority Matrix</div>
+      <table class="threat-table">
+        <thead>
+          <tr>
+            <th>System / Asset</th>
+            <th>Priority</th>
+            <th>Target Year</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>HNDL-sensitive data stores</td><td><span class="risk risk-critical">P0</span></td><td style="color:var(--accent3);font-family:'Share Tech Mono',monospace">NOW</td></tr>
+          <tr><td>External-facing TLS endpoints</td><td><span class="risk risk-critical">P0</span></td><td style="color:var(--accent3);font-family:'Share Tech Mono',monospace">2025</td></tr>
+          <tr><td>VPN / Remote access infrastructure</td><td><span class="risk risk-high">P1</span></td><td style="color:var(--warn);font-family:'Share Tech Mono',monospace">2025–26</td></tr>
+          <tr><td>Code signing & software supply chain</td><td><span class="risk risk-high">P1</span></td><td style="color:var(--warn);font-family:'Share Tech Mono',monospace">2025–26</td></tr>
+          <tr><td>PKI & Certificate Authority</td><td><span class="risk risk-high">P1</span></td><td style="color:var(--warn);font-family:'Share Tech Mono',monospace">2026</td></tr>
+          <tr><td>SSH infrastructure</td><td><span class="risk risk-medium">P2</span></td><td style="color:#ffd600;font-family:'Share Tech Mono',monospace">2026</td></tr>
+          <tr><td>Email encryption (S/MIME, PGP)</td><td><span class="risk risk-medium">P2</span></td><td style="color:#ffd600;font-family:'Share Tech Mono',monospace">2026–27</td></tr>
+          <tr><td>Internal systems / intranet</td><td><span class="risk risk-low">P3</span></td><td style="color:var(--ok);font-family:'Share Tech Mono',monospace">2027–28</td></tr>
+          <tr><td>IoT / OT / Embedded devices</td><td><span class="risk risk-low">P3</span></td><td style="color:var(--ok);font-family:'Share Tech Mono',monospace">2027–29</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Regulatory & Compliance Drivers</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="padding:10px;border-left:3px solid var(--accent3);background:var(--surface)">
+          <div style="font-size:12px;font-weight:700;color:var(--text-bright);margin-bottom:3px">NSA CNSA 2.0 Suite</div>
+          <div style="font-size:11px;color:var(--text-dim)">Mandates PQC for National Security Systems by 2030. RSA/ECC deprecated by 2030 for NSS.</div>
+        </div>
+        <div style="padding:10px;border-left:3px solid var(--warn);background:var(--surface)">
+          <div style="font-size:12px;font-weight:700;color:var(--text-bright);margin-bottom:3px">NIST SP 800-208 / OMB M-23-02</div>
+          <div style="font-size:12px;color:var(--text-dim)">Federal agencies required to inventory cryptographic systems and begin PQC migration planning.</div>
+        </div>
+        <div style="padding:10px;border-left:3px solid var(--accent2);background:var(--surface)">
+          <div style="font-size:12px;font-weight:700;color:var(--text-bright);margin-bottom:3px">EU NIS2 Directive & ENISA</div>
+          <div style="font-size:11px;color:var(--text-dim)">European critical infrastructure required to assess and plan quantum-safe cryptography migration.</div>
+        </div>
+        <div style="padding:10px;border-left:3px solid var(--ok);background:var(--surface)">
+          <div style="font-size:12px;font-weight:700;color:var(--text-bright);margin-bottom:3px">FIPS 140-3 Updates</div>
+          <div style="font-size:11px;color:var(--text-dim)">NIST updating FIPS 140-3 validation to include PQC algorithms. Required for US government procurement.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- ══════════════ COMPARE ══════════════ -->
+
+  <div id="panel-compare" class="panel">
+    <div class="card" style="margin-bottom:16px">
+      <div class="section-title">Algorithm Capability Comparison Matrix</div>
+      <div style="overflow-x:auto">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th style="min-width:180px">Algorithm</th>
+              <th>Quantum Safe</th>
+              <th>Key Exchange</th>
+              <th>Digital Sig.</th>
+              <th>NIST Standard</th>
+              <th>Small Keys</th>
+              <th>Fast Ops</th>
+              <th>Mature/Vetted</th>
+              <th>IoT Suitable</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>RSA-2048</td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="partial">~</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="partial">~</span></td>
+            </tr>
+            <tr>
+              <td>ECDSA / ECDH</td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+            </tr>
+            <tr style="background:rgba(0,212,255,0.03)">
+              <td style="color:var(--accent)">CRYSTALS-Kyber</td>
+              <td><span class="check" style="color:var(--accent)">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check" style="color:var(--ok)">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="partial">~</span></td>
+            </tr>
+            <tr style="background:rgba(0,212,255,0.03)">
+              <td style="color:var(--accent)">CRYSTALS-Dilithium</td>
+              <td><span class="check" style="color:var(--accent)">✓</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check" style="color:var(--ok)">✓</span></td>
+              <td><span class="partial">~</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="partial">~</span></td>
+            </tr>
+            <tr style="background:rgba(0,212,255,0.03)">
+              <td style="color:var(--accent)">FALCON</td>
+              <td><span class="check" style="color:var(--accent)">✓</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check" style="color:var(--ok)">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+            </tr>
+            <tr style="background:rgba(0,212,255,0.03)">
+              <td style="color:var(--accent)">SPHINCS+</td>
+              <td><span class="check" style="color:var(--accent)">✓</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check" style="color:var(--ok)">✓</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="cross">✗</span></td>
+            </tr>
+            <tr>
+              <td style="color:var(--warn)">McEliece</td>
+              <td><span class="check" style="color:var(--ok)">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="cross">✗</span></td>
+            </tr>
+            <tr>
+              <td style="color:var(--accent2)">QKD</td>
+              <td><span class="check" style="color:var(--ok)">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="partial">~</span></td>
+              <td><span class="partial">~</span></td>
+              <td><span class="cross">✗</span></td>
+            </tr>
+            <tr>
+              <td>AES-256</td>
+              <td><span class="check" style="color:var(--ok)">✓</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="cross">✗</span></td>
+              <td><span class="check" style="color:var(--ok)">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+```
+<div class="grid-2">
+  <div class="card">
+    <div class="section-title">Key Size Comparison (bytes)</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="bar-wrap">
+        <div class="bar-label"><span>FALCON-512 Public Key</span><span style="font-family:'Share Tech Mono',monospace;font-size:11px">897 B</span></div>
+        <div class="bar-track bar-cyan"><div class="bar-fill" style="width:5%"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>ECDH P-256 Public Key</span><span style="font-family:'Share Tech Mono',monospace;font-size:11px">64 B</span></div>
+        <div class="bar-track bar-red"><div class="bar-fill" style="width:1%"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>Kyber-768 Public Key</span><span style="font-family:'Share Tech Mono',monospace;font-size:11px">1,184 B</span></div>
+        <div class="bar-track bar-cyan"><div class="bar-fill" style="width:7%"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>RSA-2048 Public Key</span><span style="font-family:'Share Tech Mono',monospace;font-size:11px">256 B</span></div>
+        <div class="bar-track bar-red"><div class="bar-fill" style="width:2%"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>Dilithium3 Public Key</span><span style="font-family:'Share Tech Mono',monospace;font-size:11px">1,952 B</span></div>
+        <div class="bar-track bar-cyan"><div class="bar-fill" style="width:12%"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>SPHINCS+-256 Signature</span><span style="font-family:'Share Tech Mono',monospace;font-size:11px">49,856 B</span></div>
+        <div class="bar-track bar-purple"><div class="bar-fill" style="width:100%"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>McEliece Public Key</span><span style="font-family:'Share Tech Mono',monospace;font-size:11px">~1,040,000 B</span></div>
+        <div class="bar-track bar-red"><div class="bar-fill" style="width:100%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Technique Selection Guide</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="padding:12px;background:var(--surface);border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px">Need key exchange / encryption?</div>
+        <div style="font-size:12px;color:var(--text-dim)">→ Use <strong style="color:var(--text-bright)">CRYSTALS-Kyber</strong> (fast, compact, NIST standard)</div>
+      </div>
+      <div style="padding:12px;background:var(--surface);border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px">Need digital signatures (general use)?</div>
+        <div style="font-size:12px;color:var(--text-dim)">→ Use <strong style="color:var(--text-bright)">CRYSTALS-Dilithium</strong> (balanced, widely supported)</div>
+      </div>
+      <div style="padding:12px;background:var(--surface);border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px">Need compact signatures for IoT / bandwidth?</div>
+        <div style="font-size:12px;color:var(--text-dim)">→ Use <strong style="color:var(--text-bright)">FALCON</strong> (smallest PQC signatures)</div>
+      </div>
+      <div style="padding:12px;background:var(--surface);border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px">Need long-term root CA / ultra-conservative?</div>
+        <div style="font-size:12px;color:var(--text-dim)">→ Use <strong style="color:var(--text-bright)">SPHINCS+</strong> (hash-based, stateless, most conservative)</div>
+      </div>
+      <div style="padding:12px;background:var(--surface);border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px">Need symmetric encryption (keep using)?</div>
+        <div style="font-size:12px;color:var(--text-dim)">→ Use <strong style="color:var(--text-bright)">AES-256</strong> — already quantum-resistant at this key size</div>
+      </div>
+      <div style="padding:12px;background:var(--surface);border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px">Transitioning now — not ready to drop classical?</div>
+        <div style="font-size:12px;color:var(--text-dim)">→ Use <strong style="color:var(--text-bright)">Hybrid mode</strong>: Kyber + ECDH simultaneously in TLS</div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+  </div>
+
+</div>
+
+<script>
+// Tab switching
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// Algo card selection
+function selectAlgo(el) {
+  document.querySelectorAll('.algo-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// Particle canvas
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+for (let i = 0; i < 60; i++) {
+  particles.push({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+    r: Math.random() * 1.5 + 0.5,
+    c: Math.random() > 0.5 ? '0,212,255' : '123,47,255'
+  });
+}
+
+function animate() {
+  ctx.clearRect(0, 0, W, H);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+    if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${p.c},0.6)`;
+    ctx.fill();
+  });
+  // Draw connections
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 120) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(0,212,255,${0.15 * (1 - d/120)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(animate);
+}
+animate();
+
+// Animate bars on load
+setTimeout(() => {
+  document.querySelectorAll('.bar-fill').forEach(b => {
+    const w = b.style.width;
+    b.style.width = '0%';
+    setTimeout(() => b.style.width = w, 100);
+  });
+}, 200);
+</script>
+
+</body>
+</html>
